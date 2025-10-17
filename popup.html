@@ -95,6 +95,7 @@
             background: rgba(255,255,255,0.2);
             outline: none;
             -webkit-appearance: none;
+            appearance: none;
         }
 
         .volume-slider::-webkit-slider-thumb {
@@ -175,6 +176,45 @@
         .status-inactive {
             background: #f44336;
         }
+
+        .track-button {
+            display: block;
+            width: 100%;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            margin: 4px 0;
+            transition: all 0.3s;
+            text-align: left;
+        }
+
+        .track-button:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        .track-button.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .track-button.active::before {
+            content: '▶️ ';
+        }
+
+        .music-info {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -205,6 +245,27 @@
 
         <div style="text-align: center;">
             <button class="button" id="testMusic">🎵 Testar Música</button>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="sites-title">Seleção de Música</div>
+        
+        <div class="toggle-container">
+            <span class="toggle-label">Modo Aleatório</span>
+            <div class="toggle-switch" id="randomToggle">
+                <div class="toggle-slider"></div>
+            </div>
+        </div>
+
+        <div class="volume-container">
+            <label class="volume-label">Música Atual: <span id="currentTrackName">Carregando...</span></label>
+            <div id="trackSelector" style="margin-top: 8px;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 10px; margin-top: 10px;">
+            <button class="button" id="prevTrack" style="margin: 0;">⏮️ Anterior</button>
+            <button class="button" id="nextTrack" style="margin: 0;">⏭️ Próxima</button>
         </div>
     </div>
 

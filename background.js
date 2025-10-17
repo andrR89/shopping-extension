@@ -136,6 +136,14 @@ class MusicManager {
                 });
                 break;
 
+            case 'getCurrentTab':
+                // Retorna ID da aba atual
+                sendResponse({ 
+                    status: 'ok', 
+                    tabId: sender.tab?.id || null 
+                });
+                break;
+
             default:
                 sendResponse({ status: 'unknown_action' });
         }

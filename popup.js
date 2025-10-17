@@ -7,9 +7,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const testMusicBtn = document.getElementById('testMusic');
     const aboutBtn = document.getElementById('aboutBtn');
     const feedbackBtn = document.getElementById('feedbackBtn');
+    
+    // Novos controles de música
+    const randomToggle = document.getElementById('randomToggle');
+    const currentTrackName = document.getElementById('currentTrackName');
+    const trackSelector = document.getElementById('trackSelector');
+    const prevTrackBtn = document.getElementById('prevTrack');
+    const nextTrackBtn = document.getElementById('nextTrack');
 
     // Carrega configurações salvas
     loadSettings();
+    
+    // Carrega informações das músicas
+    loadMusicInfo();
 
     // Event Listeners
     musicToggle.addEventListener('click', toggleMusic);
@@ -18,6 +28,11 @@ document.addEventListener('DOMContentLoaded', function() {
     testMusicBtn.addEventListener('click', testMusic);
     aboutBtn.addEventListener('click', showAbout);
     feedbackBtn.addEventListener('click', showFeedback);
+    
+    // Novos event listeners
+    randomToggle.addEventListener('click', toggleRandomMode);
+    prevTrackBtn.addEventListener('click', previousTrack);
+    nextTrackBtn.addEventListener('click', nextTrack);
 
     // Carrega as configurações do storage
     function loadSettings() {
@@ -204,6 +219,207 @@ Sua opinião nos ajuda a melhorar a extensão. 🙏`);
         });
     }
 
+    // ========== FUNÇÕES DE CONTROLE DE MÚSICA ==========
+    
+    async function loadMusicInfo() {
+        try {
+            // Carrega configurações de música
+            const result = await chrome.storage.sync.get(['musicSettings']);
+            const settings = result.musicSettings || { selectedTrack: 0, randomMode: false };
+            
+            // Atualiza toggle do modo aleatório
+            updateToggleState(randomToggle, settings.randomMode);
+            
+            // Solicita informações de música do content script
+            chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                if (tabs[0]) {
+                    chrome.tabs.sendMessage(tabs[0].id, { action: 'getMusicInfo' }, function(response) {
+                        if (response && response.tracks) {
+                            updateMusicDisplay(response);
+                        } else {
+                            // Fallback para informações padrão
+                            updateMusicDisplay({
+                                tracks: [
+                                    { id: 'shop-1', name: 'Shopping Music 1' },
+                                    { id: 'shop-2', name: 'Shopping Music 2' }
+                                ],
+                                currentTrack: settings.selectedTrack,
+                                randomMode: settings.randomMode,
+                                isPlaying: false
+                            });
+                        }
+                    });
+                }
+            });
+        } catch (error) {
+            console.error('Erro ao carregar informações de música:', error);
+        }
+    }
+    
+    function updateMusicDisplay(musicInfo) {
+        const { tracks, currentTrack, randomMode, isPlaying } = musicInfo;
+        
+        // Atualiza nome da música atual
+        if (tracks && tracks[currentTrack]) {
+            currentTrackName.textContent = tracks[currentTrack].name;
+        }
+        
+        // Atualiza modo aleatório
+        updateToggleState(randomToggle, randomMode);
+        
+        // Cria botões de seleção de música
+        trackSelector.innerHTML = '';
+        
+        if (tracks) {
+            tracks.forEach((track, index) => {
+                const trackButton = document.createElement('button');
+                trackButton.className = 'track-button';
+                trackButton.textContent = track.name;
+                trackButton.dataset.trackIndex = index;
+                
+                if (index === currentTrack) {
+                    trackButton.classList.add('active');
+                }
+                
+                trackButton.addEventListener('click', () => selectTrack(index));
+                trackSelector.appendChild(trackButton);
+            });
+        }
+        
+        // Adiciona informações adicionais
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'music-info';
+        infoDiv.innerHTML = `
+            <div>Modo: ${randomMode ? 'Aleatório 🔀' : 'Sequencial 🎵'}</div>
+            <div>Status: ${isPlaying ? 'Tocando ▶️' : 'Pausado ⏸️'}</div>
+        `;
+        
+        // Remove info anterior se existir
+        const existingInfo = trackSelector.querySelector('.music-info');
+        if (existingInfo) {
+            existingInfo.remove();
+        }
+        
+        trackSelector.appendChild(infoDiv);
+    }
+    
+    function toggleRandomMode() {
+        const isActive = randomToggle.classList.contains('active');
+        const newState = !isActive;
+        
+        updateToggleState(randomToggle, newState);
+        
+        // Envia comando para content script
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'toggleRandom' });
+            }
+        });
+        
+        // Atualiza exibição após um delay
+        setTimeout(loadMusicInfo, 300);
+    }
+    
+    function selectTrack(trackIndex) {
+        // Envia comando para content script
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { 
+                    action: 'changeTrack', 
+                    trackIndex: trackIndex 
+                });
+            }
+        });
+        
+        // Atualiza exibição após um delay
+        setTimeout(loadMusicInfo, 300);
+    }
+    
+    function previousTrack() {
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'previousTrack' });
+            }
+        });
+        
+        setTimeout(loadMusicInfo, 300);
+    }
+    
+    function nextTrack() {
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+            if (tabs[0]) {
+                chrome.tabs.sendMessage(tabs[0].id, { action: 'nextTrack' });
+            }
+        });
+        
+        setTimeout(loadMusicInfo, 300);
+    }
+
+    // ========== FUNÇÕES DE CONTINUIDADE MUSICAL ==========
+    
+    async function checkMusicContinuity() {
+        try {
+            const result = await chrome.storage.local.get(['shopping_music_continuity']);
+            const continuityData = result.shopping_music_continuity;
+            
+            if (continuityData) {
+                const age = Date.now() - continuityData.timestamp;
+                const ageMinutes = Math.floor(age / 60000);
+                
+                if (age < 30 * 60 * 1000) { // Menos de 30 minutos
+                    const trackName = continuityData.trackIndex !== undefined ? 
+                        `Música ${continuityData.trackIndex + 1}` : 'Música';
+                    const timeFormatted = Math.floor(continuityData.currentTime || 0);
+                    
+                    console.log(`🔄 Continuidade disponível: ${trackName} em ${timeFormatted}s (${ageMinutes} min atrás)`);
+                    
+                    // Adiciona indicador visual se houver continuidade
+                    addContinuityIndicator(trackName, timeFormatted, ageMinutes);
+                } else {
+                    console.log(`⏰ Continuidade expirada (${ageMinutes} min)`);
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao verificar continuidade:', error);
+        }
+    }
+    
+    function addContinuityIndicator(trackName, timeFormatted, ageMinutes) {
+        // Remove indicador existente
+        const existingIndicator = document.getElementById('continuity-indicator');
+        if (existingIndicator) {
+            existingIndicator.remove();
+        }
+        
+        // Cria novo indicador
+        const indicator = document.createElement('div');
+        indicator.id = 'continuity-indicator';
+        indicator.style.cssText = `
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 10px 0;
+            font-size: 11px;
+            text-align: center;
+            color: #4CAF50;
+        `;
+        
+        indicator.innerHTML = `
+            🔄 <strong>Continuidade disponível</strong><br>
+            ${trackName} • ${timeFormatted}s • ${ageMinutes} min atrás
+        `;
+        
+        // Adiciona após a seção de controles principais
+        const controlsSection = document.querySelector('.controls');
+        if (controlsSection) {
+            controlsSection.appendChild(indicator);
+        }
+    }
+
+    // Verifica continuidade quando popup abre
+    checkMusicContinuity();
+
     // Verifica o site atual quando o popup abre
     checkCurrentSite();
 
@@ -212,6 +428,7 @@ Sua opinião nos ajuda a melhorar a extensão. 🙏`);
         if (request.action === 'updateStatus') {
             // Atualiza status visual se necessário
             checkCurrentSite();
+            loadMusicInfo(); // Também recarrega info de música
         }
     });
 });

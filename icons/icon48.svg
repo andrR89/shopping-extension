@@ -6,7 +6,6 @@
       <stop offset="100%" style="stop-color:#feca57;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect width="48" height="48" rx="8" fill="url(#grad3)"/>
-  <circle cx="24" cy="24" r="18" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
-  <text x="24" y="32" font-family="Arial" font-size="24" text-anchor="middle" fill="white">🎵</text>
+  <rect width="48" height="48" rx="9" fill="url(#grad3)"/>
+  <text x="24" y="32" font-family="Arial" font-size="26" text-anchor="middle" fill="white">🎵</text>
 </svg>

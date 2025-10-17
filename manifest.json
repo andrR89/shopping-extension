@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Shopping Music Player",
-      "version": "1.6",
+      "version": "1.9.7",
   "description": "Toca música automaticamente quando você visita sites de compras",
   "permissions": [
     "activeTab",
